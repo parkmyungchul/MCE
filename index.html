@@ -11,7 +11,6 @@
   button { padding:10px 14px; border:0; border-radius:10px; color:#fff; font-size:16px; cursor:pointer; }
   #recordBtn { background:#007aff; }
   #recordBtn.danger { background:#ff3b30; } /* Stop 상태 */
-  #recordBtn.done { background:#34c759; }   /* Done 상태 */
   #timer { min-width:80px; font-variant-numeric: tabular-nums; margin-left:10px; }
   audio { width:100%; margin-top:12px; }
 
@@ -199,13 +198,26 @@
         // 문서 제목에도 남겨두기
         document.title = `Audio Ready: ${lastName}`;
 
-        // Stop → Done 으로 전환
-        recordBtn.textContent = 'Done';
-        recordBtn.classList.remove('danger');
-        recordBtn.classList.add('done');
+        // 멀티라인 페이로드: name, title, subtitle, received, dataURL(5행)
+        const payload = [
+          metaNameEl.value || '',
+          metaTitleEl.value || '',
+          metaSubtitleEl.value || '',
+          incoming.received || '',
+          dataTA.value || ''
+        ].join('\n');
+
+        // 자동으로 클립보드 복사 및 Shortcut 실행
+        await copyTextRobust(payload);
+        const url = "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT_NAME);
+        location.href = url;
+        
       } catch(e) {
-        console.error('Data URL 변환 실패:', e);
-        alert('녹음 파일 처리 중 오류가 발생했습니다.');
+        console.error('처리 실패:', e);
+        alert('Recording processing failed: ' + e.message);
+        // 실패 시 버튼을 Record로 되돌림
+        recordBtn.textContent = 'Record';
+        recordBtn.classList.remove('danger');
       }
     };
 
@@ -229,7 +241,7 @@
         await startRec();
       } catch(e){
         console.error(e);
-        alert('마이크 권한 또는 녹음 시작 실패.');
+        alert('Failed to start recording.');
         clearInterval(tickId);
         timerEl.textContent = '00:00';
         recordBtn.textContent = 'Record';
@@ -238,27 +250,6 @@
       }
     } else if (label === 'Stop') {
       await stopRec();
-    } else if (label === 'Done') {
-      if (!dataTA.value) {
-        alert('복사할 녹음이 없습니다.');
-        return;
-      }
-      // 멀티라인 페이로드: name, title, subtitle, received, dataURL(5행)
-      const payload = [
-        metaNameEl.value || '',
-        metaTitleEl.value || '',
-        metaSubtitleEl.value || '',
-        incoming.received || '',
-        dataTA.value || ''
-      ].join('\n');
-
-      try {
-        await copyTextRobust(payload);
-        const url = "shortcuts://run-shortcut?name=" + encodeURIComponent(SHORTCUT_NAME);
-        location.href = url;
-      } catch {
-        alert('클립보드 복사 실패');
-      }
     }
   }
 
